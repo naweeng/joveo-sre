@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-agent-traces
+  namespace: monitoring
+spec:
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      name: grafana-agent-traces
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: grafana-agent-traces
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/agent/agent.yaml
+        - -server.http.address=0.0.0.0:80
+        command:
+        - /bin/agent
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: grafana/agent:v0.24.2
+        imagePullPolicy: IfNotPresent
+        name: grafana-agent-traces
+        ports:
+        - containerPort: 80
+          name: http-metrics
+          protocol: TCP
+        - containerPort: 6831
+          name: thrift-compact
+          protocol: UDP
+        - containerPort: 6832
+          name: thrift-binary
+          protocol: UDP
+        - containerPort: 14268
+          name: thrift-http
+          protocol: TCP
+        - containerPort: 14250
+          name: thrift-grpc
+          protocol: TCP
+        - containerPort: 9411
+          name: zipkin
+          protocol: TCP
+        - containerPort: 4317
+          name: otlp
+          protocol: TCP
+        - containerPort: 55678
+          name: opencensus
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/agent
+          name: grafana-agent-traces
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: grafana-agent-traces
+      serviceAccountName: grafana-agent-traces
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: grafana-agent-traces
+        name: grafana-agent-traces
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: grafana-agent-traces
+  name: opentelemetry-collector
+  namespace: monitoring
+spec:
+  ports:
+  - name: grafana-agent-traces-http-metrics
+    port: 80
+    targetPort: 80
+  - name: grafana-agent-traces-thrift-compact
+    port: 6831
+    protocol: UDP
+    targetPort: 6831
+  - name: grafana-agent-traces-thrift-binary
+    port: 6832
+    protocol: UDP
+    targetPort: 6832
+  - name: grafana-agent-traces-thrift-http
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
+  - name: grafana-agent-traces-thrift-grpc
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
+  - name: grafana-agent-traces-zipkin
+    port: 9411
+    protocol: TCP
+    targetPort: 9411
+  - name: grafana-agent-traces-otlp
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
+  - name: grafana-agent-traces-opencensus
+    port: 55678
+    protocol: TCP
+    targetPort: 55678
+  selector:
+    name: grafana-agent-traces

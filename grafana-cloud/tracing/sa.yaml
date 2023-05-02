@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-agent-traces
+  namespace: monitoring
+secrets:
+- name: grafana-agent-traces-token
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: grafana-agent-traces
+  name: grafana-agent-traces-token
+  namespace: monitoring
+type: kubernetes.io/service-account-token
