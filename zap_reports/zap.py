@@ -34,43 +34,10 @@ def getting_secret():
     secret = response['SecretString']
     return json.loads(secret)
 
-
-def zap_report():
-    with open(report_filename) as f:
-        data = json.load(f)
-
-    output = ""
-    alert_count = 0
-    alert_names = []
-
-    for site_dict in data['site']:
-        target = site_dict["@name"]
-
-        for alert_dict in site_dict['alerts']:
-            if alert_dict['riskdesc'].startswith(f"{alert_type}"):
-                alert_count += 1
-                high_alert_name = alert_dict['name']
-                alert_names.append(high_alert_name)
-        if alert_count > 0:
-            output += f"Target: {target}\n\n{alert_type} alert count: {alert_count}\n"
-            output += f"{alert_type} alert names:\n"
-            for i, alert_name in enumerate(alert_names):
-                output += f"{i+1}. {alert_name}\n"
-            output += "\n"
-            alert_names = []
-            alert_count = 0
-    return output
-
-
-message = zap_report()
-# print(message)
-
-
-# Function to send slack notification
 def send_slack_notification(slackmessage):
     try:
         # getting_secret()["webhook"]
-        url = getting_secret()["sre-prod-alerts"]
+        url =  getting_secret()["sre-prod-alerts"]
         message = slackmessage
         title = (f"Zap Alerts :zap:")
         slack_data = {
@@ -98,4 +65,38 @@ def send_slack_notification(slackmessage):
         raise Exception(response.status_code, response.text)
 
 
-send_slack_notification(message)
+def zap_report():
+    with open(report_filename) as f:
+        data = json.load(f)
+
+    alert_count = 0
+    alert_names = []
+
+    for site_dict in data['site']:
+        target = site_dict["@name"]
+
+        for alert_dict in site_dict['alerts']:
+            if alert_dict['riskdesc'].startswith(f"{alert_type}"):
+                alert_count += 1
+                high_alert_name = alert_dict['name']
+                alert_names.append(high_alert_name)
+
+        if alert_count > 0:
+            output = f"Target: {target}\n\n{alert_type} alert count: {alert_count}\n"
+            output += f"{alert_type} alert names:\n"
+            for i, alert_name in enumerate(alert_names):
+                output += f"{i+1}. {alert_name}\n"
+            output += "\n"
+            alert_names = []
+            alert_count = 0
+            return output
+
+    # No alerts found
+    return None
+
+message = zap_report()
+if message is not None:
+    send_slack_notification(message)
+else:
+    print("No alerts found.")
+
