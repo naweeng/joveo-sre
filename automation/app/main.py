@@ -2,12 +2,12 @@ from fastapi import FastAPI, HTTPException
 import boto3
 import uvicorn
 from pymongo import MongoClient
-from config import *
+from .config import *
 from .helper import *
 
 app = FastAPI()    
     
-@app.get('/aws/get_users') 
+@app.get('/aws/get_users')
 def getting_all_users(profile: Stack):
     try:
         allusers = []
@@ -46,8 +46,9 @@ def create_user(request: UserRequest, profile: Stack):
                 PasswordResetRequired=True
             )
 
-             # Generate and send login details via email
-            # sending_mail(username, password, profile)
+             #send login details via email
+            msg = f"Hi {username.split('@')[0]},\n\nYour IAM user credentials for {profile.name}, are as follows:\n\nUsername: {username}\nPassword: {password}\n\nPlease use the following link to log in to the AWS Management Console: {get_aws_account_url(profile)}\n"
+            sending_mail(username, msg, profile)
         return f"Users {', '.join(usernames)} created successfully for {profile.name}. Login details shared over email."
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -61,7 +62,7 @@ def delete_user(request: UserRequest, profile: Stack):
         for username in usernames:
             #deleting user's password/creds
             iam.delete_login_profile(UserName=username)
-            # Remove MFA devices associated with the user
+            # Remove MFA devices of the user
             response = iam.list_mfa_devices(UserName=username)
             mfa_devices = response['MFADevices']
             for mfa_device in mfa_devices:
@@ -76,18 +77,15 @@ def delete_user(request: UserRequest, profile: Stack):
                 access_key_id = access_key['AccessKeyId']
                 iam.delete_access_key(UserName=username, AccessKeyId=access_key_id)
 
-            # Detach user policies
             attached_policies = iam.list_attached_user_policies(UserName=username)['AttachedPolicies']
             for policy in attached_policies:
                 policy_arn = policy['PolicyArn']
                 iam.detach_user_policy(UserName=username, PolicyArn=policy_arn)
 
-            # Delete inline policies
             inline_policies = iam.list_user_policies(UserName=username)['PolicyNames']
             for policy_name in inline_policies:
                 iam.delete_user_policy(UserName=username, PolicyName=policy_name)
 
-            # Remove the users from attached groups
             response = iam.list_groups_for_user(UserName=username)
             groups = response['Groups']
             for group in groups:
@@ -103,40 +101,34 @@ def delete_user(request: UserRequest, profile: Stack):
 @app.post('/mongo/create_user') 
 def create_mongodb_user(request: MongoUserRequest, profile: MONGO):
     # Establish a connection to MongoDB
-    connection_string = f'mongodb://root:Joveo%40152022@{get_mongo_url(profile)}/admin'
+    connection_string = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
     print(connection_string)
     database = 'admin'
     username = request.username
     client = MongoClient(connection_string)
-
     try:
-        # Access the desired database
         db = client[database]
-
         # Determine if the username contains "@joveo.com"
         is_joveo_user = "@joveo.com" in username
-
-        # Generate a random password or choose a fixed password
         if is_joveo_user:
             password = generate_random_password()
         else:
-            password = "fixedpassword"
-
-        # Create the user
+            password = os.getenv("DEFAULT_MONGO_PASS")
+        # Creating the user
         db.command('createUser', username, pwd=password, roles=[{"role": "readAnyDatabase", "db": "admin"}])
 
         if is_joveo_user:
             # Send login details to the user's email
-            # sending_mail(username, password, profile)
+            msg = f"Hi {username.split('@')[0]},\n\nYour MongoDB user credentials are as follows for {profile.name}:\n\nUsername: {username}\nPassword: {password}\n"
+            sending_mail(username, msg, profile)
             return f"User '{username}' created successfully in {profile.name}. Login details have been sent to the email address."
         else:
-            return f"User '{username}' created successfully in MongoDB. Login details: Username: {username}, Password: {password}"
+            return f"User '{username}' created successfully in {profile.name}. Login details: Username: {username}, Password: {password}"
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-        # Close the MongoDB connection
         client.close()
 
 if __name__ == "__main__":
