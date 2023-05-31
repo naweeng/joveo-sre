@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from enum import Enum
 from typing import List
+import os
 
 class UserRequest(BaseModel):
     usernames: List[str]
@@ -41,14 +42,14 @@ def get_aws_account_url(profile: Stack):
 
 def get_mongo_url(profile: MONGO):
     mongo_urls = {
-        MONGO.PROD_MONGO : "prod-mongo-url",
-        MONGO.RULES_MONGO_PROD : "rules-mongo-url",
-        MONGO.APPLY_MONGO_PROD : "apply-mongo-url",
-        MONGO.FNA_HEIMDALL_MONGO_PROD : "heimdall-mongo-url",
-        MONGO.FNA_PUBMAN_MONGO_PROD : "pubman-mongo-url",
-        MONGO.DS_MONGO_PROD : "ds-mongo-url",
-        MONGO.TRACKING_DMA_MONGO_PROD : "trk-dma-mongo-url",
-        MONGO.TRACKING_CG_MONGO_PROD : "trk-dma-cg-mongo-2.prod.joveo.com:27017"
+        MONGO.PROD_MONGO : os.getenv("PROD_MONGO"),
+        MONGO.RULES_MONGO_PROD : os.getenv("RULES_MONGO_PROD"),
+        MONGO.APPLY_MONGO_PROD : os.getenv("APPLY_MONGO_PROD"),
+        MONGO.FNA_HEIMDALL_MONGO_PROD : os.getenv("FNA_HEIMDALL_MONGO_PROD"),
+        MONGO.FNA_PUBMAN_MONGO_PROD : os.getenv("FNA_PUBMAN_MONGO_PROD"),
+        MONGO.DS_MONGO_PROD : os.getenv("DS_MONGO_PROD"),
+        MONGO.TRACKING_DMA_MONGO_PROD : os.getenv("TRACKING_DMA_MONGO_PROD"),
+        MONGO.TRACKING_CG_MONGO_PROD : os.getenv("TRACKING_CG_MONGO_PROD")
     }
     if profile in mongo_urls:
         return mongo_urls[profile]
