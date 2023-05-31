@@ -1,74 +1,13 @@
 from fastapi import FastAPI, HTTPException
 import boto3
 import uvicorn
-import smtplib
-from email.mime.text import MIMEText
 from pymongo import MongoClient
-import secrets
-import string
-from pydantic import BaseModel
-from enum import Enum
-from typing import List
+from config import *
+from .helper import *
 
 app = FastAPI()    
     
-# config.py
-
-
-class UserRequest(BaseModel):
-    usernames: List[str]
-    
-class MongoUserRequest(BaseModel):
-    username : str
-
-class Stack(Enum):
-    JOVEO_PROD = "aws-prod-joveo"
-    JOVEO_STAGE = "aws-stage-joveo"
-    JOVEO_MGMT = "aws-mgmt-joveo"
-    JOBCLOUD_PROD = "aws-prod-jc"
-    JOBCLOUD_STAGE = "aws-stage-jc"
-    JOBCLOUD_MGMT = "aws-mgmt-jc"
-
-class MONGO(Enum):
-    PROD_MONGO = "prod-mongo"
-    RULES_MONGO_PROD = "rules-mongo"
-    APPLY_MONGO_PROD = "apply-mongo"
-    FNA_HEIMDALL_MONGO_PROD = "heimdall-mongo"
-    FNA_PUBMAN_MONGO_PROD = "pubman-mongo"
-    DS_MONGO_PROD = "ds-mongo"
-    TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
-    TRACKING_CG_MONGO_PROD = "trk-cg-mongo"
-
-def get_aws_account_url(profile: Stack):
-    aws_urls = {
-        Stack.JOVEO_PROD: "https://joveo-prod.signin.aws.amazon.com/console",
-        Stack.JOVEO_STAGE: "https://joveo-dev.signin.aws.amazon.com/console",
-        Stack.JOVEO_MGMT: "https://joveo-mgmt.signin.aws.amazon.com/console",
-        Stack.JOBCLOUD_MGMT: "https://jobcloud-mgmt.signin.aws.amazon.com/console",
-        Stack.JOBCLOUD_PROD: "https://jobcloud-prod.signin.aws.amazon.com/console",
-        Stack.JOBCLOUD_STAGE: "https://jobcloud-stage.signin.aws.amazon.com/console"
-    }
-    if profile in aws_urls:
-        return aws_urls[profile]
-    raise Exception("Unknown environment")
-
-def get_mongo_url(profile: MONGO):
-    mongo_urls = {
-        MONGO.PROD_MONGO : "prod-mongo-url",
-        MONGO.RULES_MONGO_PROD : "rules-mongo-url",
-        MONGO.APPLY_MONGO_PROD : "apply-mongo-url",
-        MONGO.FNA_HEIMDALL_MONGO_PROD : "heimdall-mongo-url",
-        MONGO.FNA_PUBMAN_MONGO_PROD : "pubman-mongo-url",
-        MONGO.DS_MONGO_PROD : "ds-mongo-url",
-        MONGO.TRACKING_DMA_MONGO_PROD : "trk-dma-mongo-url",
-        MONGO.TRACKING_CG_MONGO_PROD : "trk-dma-cg-mongo-2.prod.joveo.com:27017"
-    }
-    if profile in mongo_urls:
-        return mongo_urls[profile]
-    raise Exception("Unknown environment")
-
-
-@app.get('/aws/get_users')
+@app.get('/aws/get_users') 
 def getting_all_users(profile: Stack):
     try:
         allusers = []
@@ -112,55 +51,6 @@ def create_user(request: UserRequest, profile: Stack):
         return f"Users {', '.join(usernames)} created successfully for {profile.name}. Login details shared over email."
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-#helper.py
-
-def generate_random_password():
-    length = 16
-    characters = string.ascii_letters + string.digits + string.punctuation
-    while True:
-        password = ''.join(secrets.choice(characters) for _ in range(length))
-        if any(char.isdigit() for char in password):
-            return password
-
-def create_iam_user_email_body(username, password, profile: Stack):
-    return f"Hi {username.split('@')[0]},\n\nYour IAM user credentials for {profile.name}, are as follows:\n\nUsername: {username}\nPassword: {password}\n\nPlease use the following link to log in to the AWS Management Console: {get_aws_account_url(profile)}\n"
-
-def create_mongo_user_email_body(username, password, profile: MONGO):
-    return f"Hi {username.split('@')[0]},\n\nYour MongoDB user credentials are as follows for {profile.name}:\n\nUsername: {username}\nPassword: {password}\n"
-
-# # def sending_mail(username, password, profile):
-# #     if profile in [Stack.JOVEO_PROD, Stack.JOVEO_STAGE, Stack.JOVEO_MGMT, Stack.JOBCLOUD_PROD, Stack.JOBCLOUD_STAGE, Stack.JOBCLOUD_MGMT]:
-# #         email_body = create_iam_user_email_body(username, password, profile)
-# #     elif profile in [MONGO.TRACKING_CG_MONGO_PROD]:
-# #         email_body = create_mongo_user_email_body(username, password, profile)
-# #     else:
-# #         raise Exception("Unknown profile")
-    
-# #     
-# #     
-# #     receiver_email = "manish.kumar@joveo.com"  #f"{user}" #f"{user}@example.com"
-# #     subject = f'[{profile.name}] User Credentials'
-# #     message = MIMEText(email_body)
-# #     message['From'] = sender_email
-# #     message['To'] = receiver_email
-# #     message['Subject'] = subject
-
-#     # Send the email
-#     server = smtplib.SMTP('smtp.gmail.com', 587)
-#     server.starttls()
-#     server.login(sender_email, sender_password)
-#     server.sendmail(sender_email, receiver_email, message.as_string())
-#     server.quit()
-
-def get_mongo_connection(hostname, user, passwd):
-    mongoclient = MongoClient(hostname, username=user, password=passwd)
-    db = mongoclient.admin
-    return db
-
-
-
 
 @app.delete('/aws/delete_user')
 def delete_user(request: UserRequest, profile: Stack):
@@ -210,7 +100,7 @@ def delete_user(request: UserRequest, profile: Stack):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post('/mongo/create_user') #
+@app.post('/mongo/create_user') 
 def create_mongodb_user(request: MongoUserRequest, profile: MONGO):
     # Establish a connection to MongoDB
     connection_string = f'mongodb://root:Joveo%40152022@{get_mongo_url(profile)}/admin'
