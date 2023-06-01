@@ -27,6 +27,15 @@ class MONGO(Enum):
     TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
     TRACKING_CG_MONGO_PROD = "trk-cg-mongo"
 
+class MONGO_ROLES(Enum):
+    ROOT = "root"
+    READONLY = "readAnyDatabase"
+    READWRITE = "readWrite"
+    CLUSTERMONITOR = "clusterMonitor"
+
+class DBUserRequest(BaseModel):
+    on_which_database : str
+
 def get_aws_account_url(profile: Stack):
     aws_urls = {
         Stack.JOVEO_PROD: "https://joveo-prod.signin.aws.amazon.com/console",

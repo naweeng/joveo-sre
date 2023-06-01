@@ -7,7 +7,7 @@ from .helper import *
 
 app = FastAPI()    
     
-@app.get('/aws/get_users')
+@app.get('/aws/get_users', tags=["AWS"])
 def getting_all_users(profile: Stack):
     try:
         allusers = []
@@ -21,7 +21,7 @@ def getting_all_users(profile: Stack):
     except Exception as e:  
         raise HTTPException(status_code=500,detail=str(e))
 
-@app.post('/aws/create_user') #to validate email of requester
+@app.post('/aws/create_user', tags=["AWS"]) #to validate email of requester
 def create_user(request: UserRequest, profile: Stack):
     usernames = request.usernames
 
@@ -53,7 +53,7 @@ def create_user(request: UserRequest, profile: Stack):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete('/aws/delete_user')
+@app.delete('/aws/delete_user', tags=["AWS"])
 def delete_user(request: UserRequest, profile: Stack):
     usernames = request.usernames
     session = boto3.Session(profile_name=profile.value)
@@ -98,13 +98,24 @@ def delete_user(request: UserRequest, profile: Stack):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post('/mongo/create_user') 
-def create_mongodb_user(request: MongoUserRequest, profile: MONGO):
+@app.get("/mongo/show_dbs", tags=["MONGO"])
+def show_databases(profile: MONGO):
+    try:
+        mongo_uri = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
+        with MongoClient(mongo_uri) as client:
+            database_names = client.list_database_names()
+            return {"databases": database_names}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post('/mongo/create_user', tags=["MONGO"]) 
+def create_mongodb_user(request: MongoUserRequest, profile: MONGO, role: MONGO_ROLES, db_to_use: DBUserRequest  ):
     # Establish a connection to MongoDB
     connection_string = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
-    print(connection_string)
     database = 'admin'
     username = request.username
+    dbs = db_to_use.on_which_database
     client = MongoClient(connection_string)
     try:
         db = client[database]
@@ -114,8 +125,12 @@ def create_mongodb_user(request: MongoUserRequest, profile: MONGO):
             password = generate_random_password()
         else:
             password = os.getenv("DEFAULT_MONGO_PASS")
-        # Creating the user
-        db.command('createUser', username, pwd=password, roles=[{"role": "readAnyDatabase", "db": "admin"}])
+        command = {
+            'createUser': username,
+            'pwd': password,
+            'roles': [{"role": role.value, "db": dbs}]
+        }
+        db.command(command)
 
         if is_joveo_user:
             # Send login details to the user's email
@@ -130,6 +145,41 @@ def create_mongodb_user(request: MongoUserRequest, profile: MONGO):
 
     finally:
         client.close()
+
+@app.delete("/mongo/delete_user", tags=["MONGO"])
+def delete_mongodb_user(request:MongoUserRequest, profile: MONGO ):
+    try:
+        username = request.username
+        mongo_uri = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
+        with MongoClient(mongo_uri) as client:
+            database = client['admin']
+            database.command('dropUser', username)
+            return {"message": f"User '{username}' deleted from database '{profile.name}'"}
+    except Exception as e:
+        return {"error": str(e)}
+    
+@app.patch("/mongo/reset_password", tags=["MONGO"])
+def reset_mongodb_password(request: MongoUserRequest, profile: MONGO):
+    try:
+        username = request.username
+        mongo_uri = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
+        with MongoClient(mongo_uri) as client:
+            is_joveo_user = "@joveo.com" in username
+            if is_joveo_user:
+                password = generate_random_password()
+            else:
+                password = os.getenv("DEFAULT_MONGO_PASS")           
+            database = client['admin']
+            database.command('updateUser', username, pwd=password)
+            if is_joveo_user:
+                # Send login details to the user's email
+                msg = f"Hi {username.split('@')[0]},\n\nPassword reset for user {username} in {profile.name}:\n\n\nNew Password: {password}\n"
+                sending_mail(username, msg, profile)
+                return f"User '{username}' Password reset successfully on {profile.name}. Login details have been sent to the email address."
+            else:
+                return f"User '{username}' Password reset successfully on {profile.name}. New Password: {password}"
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=80)
