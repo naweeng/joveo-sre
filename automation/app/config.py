@@ -26,9 +26,14 @@ class MONGO(Enum):
     DS_MONGO_PROD = "ds-mongo"
     TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
     TRACKING_CG_MONGO_PROD = "trk-cg-mongo"
+    STAGE_MONGO = "stage-mongo"
+    TRK_DMA_STAGE_MONGO = "trk-dma-stage-mongo"
+    TRK_CG_STAGE_MONGO = "trk-cg-stage-mongo"
+    DS_STAGE_MONGO = "ds-stage-mongo"
+    FNA_HEIMDALL_STAGE_MONGO = "fna-heimdall-stage-mongo"
+    APPLY_STAGE_MONGO = "apply-stage-mongo"
 
 class MONGO_ROLES(Enum):
-    ROOT = "root"
     READONLY = "readAnyDatabase"
     READWRITE = "readWrite"
     CLUSTERMONITOR = "clusterMonitor"
@@ -58,7 +63,13 @@ def get_mongo_url(profile: MONGO):
         MONGO.FNA_PUBMAN_MONGO_PROD : os.getenv("FNA_PUBMAN_MONGO_PROD"),
         MONGO.DS_MONGO_PROD : os.getenv("DS_MONGO_PROD"),
         MONGO.TRACKING_DMA_MONGO_PROD : os.getenv("TRACKING_DMA_MONGO_PROD"),
-        MONGO.TRACKING_CG_MONGO_PROD : os.getenv("TRACKING_CG_MONGO_PROD")
+        MONGO.TRACKING_CG_MONGO_PROD : os.getenv("TRACKING_CG_MONGO_PROD"),
+        MONGO.STAGE_MONGO : os.getenv("STAGE_MONGO"),
+        MONGO.TRK_DMA_STAGE_MONGO : os.getenv("TRK_DMA_STAGE_MONGO"),
+        MONGO.TRK_CG_STAGE_MONGO : os.getenv("TRK_CG_STAGE_MONGO"),
+        MONGO.DS_STAGE_MONGO : os.getenv("DS_STAGE_MONGO"),
+        MONGO.FNA_HEIMDALL_STAGE_MONGO : os.getenv("FNA_HEIMDALL_STAGE_MONGO"),
+        MONGO.APPLY_STAGE_MONGO :os.getenv("APPLY_STAGE_MONGO")
     }
     if profile in mongo_urls:
         return mongo_urls[profile]
