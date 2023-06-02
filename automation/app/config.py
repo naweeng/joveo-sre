@@ -69,7 +69,7 @@ def get_mongo_url(profile: MONGO):
         MONGO.TRK_CG_STAGE_MONGO : os.getenv("TRK_CG_STAGE_MONGO"),
         MONGO.DS_STAGE_MONGO : os.getenv("DS_STAGE_MONGO"),
         MONGO.FNA_HEIMDALL_STAGE_MONGO : os.getenv("FNA_HEIMDALL_STAGE_MONGO"),
-        MONGO.APPLY_STAGE_MONGO :os.getenv("APPLY_STAGE_MONGO")
+        MONGO.APPLY_STAGE_MONGO : os.getenv("APPLY_STAGE_MONGO")
     }
     if profile in mongo_urls:
         return mongo_urls[profile]
