@@ -26,12 +26,24 @@ class MONGO(Enum):
     DS_MONGO_PROD = "ds-mongo"
     TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
     TRACKING_CG_MONGO_PROD = "trk-cg-mongo"
+    HASHING_MONGO_PROD = "hashing-mongo-prod"
     STAGE_MONGO = "stage-mongo"
     TRK_DMA_STAGE_MONGO = "trk-dma-stage-mongo"
     TRK_CG_STAGE_MONGO = "trk-cg-stage-mongo"
     DS_STAGE_MONGO = "ds-stage-mongo"
     FNA_HEIMDALL_STAGE_MONGO = "fna-heimdall-stage-mongo"
     APPLY_STAGE_MONGO = "apply-stage-mongo"
+    JC_GENERIC_MONGO = "jc-generic-mongo"
+    JC_HASHING_MONGO_PROD = "jc-hashing-mongo"
+    JC_RULES_MONGO_PROD = "jc-rules-mongo"
+    JC_FNA_HEIMDALL_MONGO_PROD = "jc-heimdall-mongo"
+    JC_FNA_PUBMAN_MONGO_PROD = "jc-pubman-mongo"
+    JC_DS_MONGO_PROD = "jc-ds-mongo"
+    JC_TRACKING_DMA_MONGO_PROD = "jc-trk-dma-mongo"
+    JC_GENERIC_STAGE_MONGO = "jc-stage-mongo"
+    JC_TRK_DMA_STAGE_MONGO = "jc-trk-dma-stage-mongo"
+    JC_DS_STAGE_MONGO = "jc-ds-stage-mongo"
+    JC_FNA_HEIMDALL_STAGE_MONGO = "jc-fna-heimdall-stage-mongo"
 
 class MONGO_ROLES(Enum):
     READONLY = "readAnyDatabase"
@@ -61,6 +73,7 @@ def get_mongo_url(profile: MONGO):
         MONGO.APPLY_MONGO_PROD : os.getenv("APPLY_MONGO_PROD"),
         MONGO.FNA_HEIMDALL_MONGO_PROD : os.getenv("FNA_HEIMDALL_MONGO_PROD"),
         MONGO.FNA_PUBMAN_MONGO_PROD : os.getenv("FNA_PUBMAN_MONGO_PROD"),
+        MONGO.HASHING_MONGO_PROD : os.getenv("HASHING_MONGO_PROD"),
         MONGO.DS_MONGO_PROD : os.getenv("DS_MONGO_PROD"),
         MONGO.TRACKING_DMA_MONGO_PROD : os.getenv("TRACKING_DMA_MONGO_PROD"),
         MONGO.TRACKING_CG_MONGO_PROD : os.getenv("TRACKING_CG_MONGO_PROD"),
@@ -69,7 +82,18 @@ def get_mongo_url(profile: MONGO):
         MONGO.TRK_CG_STAGE_MONGO : os.getenv("TRK_CG_STAGE_MONGO"),
         MONGO.DS_STAGE_MONGO : os.getenv("DS_STAGE_MONGO"),
         MONGO.FNA_HEIMDALL_STAGE_MONGO : os.getenv("FNA_HEIMDALL_STAGE_MONGO"),
-        MONGO.APPLY_STAGE_MONGO : os.getenv("APPLY_STAGE_MONGO")
+        MONGO.APPLY_STAGE_MONGO : os.getenv("APPLY_STAGE_MONGO"),
+        MONGO.JC_GENERIC_MONGO : os.getenv("JC_GENERIC_MONGO"),
+        MONGO.JC_HASHING_MONGO_PROD : os.getenv("JC_HASHING_MONGO_PROD"),
+        MONGO.JC_RULES_MONGO_PROD : os.getenv("JC_RULES_MONGO_PROD"),
+        MONGO.JC_FNA_HEIMDALL_MONGO_PROD : os.getenv("JC_FNA_HEIMDALL_MONGO_PROD"),
+        MONGO.JC_FNA_PUBMAN_MONGO_PROD : os.getenv("JC_FNA_PUBMAN_MONGO_PROD"),
+        MONGO.JC_DS_MONGO_PROD : os.getenv("JC_DS_MONGO_PROD"),
+        MONGO.JC_TRACKING_DMA_MONGO_PROD : os.getenv("JC_TRACKING_DMA_MONGO_PROD"),
+        MONGO.JC_GENERIC_STAGE_MONGO : os.getenv("JC_GENERIC_STAGE_MONGO"),
+        MONGO.JC_TRK_DMA_STAGE_MONGO : os.getenv("JC_TRK_DMA_STAGE_MONGO"),
+        MONGO.JC_DS_STAGE_MONGO : os.getenv("JC_DS_STAGE_MONGO"),
+        MONGO.JC_FNA_HEIMDALL_STAGE_MONGO : os.getenv("JC_FNA_HEIMDALL_STAGE_MONGO")
     }
     if profile in mongo_urls:
         return mongo_urls[profile]
