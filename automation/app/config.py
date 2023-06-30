@@ -44,7 +44,7 @@ class DBUserRequest(BaseModel):
 
 def get_aws_account_url(profile: Stack):
     aws_urls = {
-        Stack.JOVEO_PROD: "https://joveo-prod.signin.aws.amazon.com/console",
+        Stack.JOVEO_PROD: "https://joveo.signin.aws.amazon.com/console",
         Stack.JOVEO_STAGE: "https://joveo-dev.signin.aws.amazon.com/console",
         Stack.JOVEO_MGMT: "https://joveo-mgmt.signin.aws.amazon.com/console",
         Stack.JOBCLOUD_MGMT: "https://jobcloud-mgmt.signin.aws.amazon.com/console",
