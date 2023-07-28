@@ -5,7 +5,10 @@ import os
 
 class UserRequest(BaseModel):
     usernames: List[str]
-    
+
+class OnboardingOffBoardingUserRequest(BaseModel):
+    username: str
+
 class MongoUserRequest(BaseModel):
     username : str
 
@@ -39,8 +42,6 @@ class MONGO_ROLES(Enum):
     READWRITE = "readWrite"
     CLUSTERMONITOR = "clusterMonitor"
 
-class DBUserRequest(BaseModel):
-    on_which_database : str
 
 def get_aws_account_url(profile: Stack):
     aws_urls = {
@@ -77,3 +78,12 @@ def get_mongo_url(profile: MONGO):
     if profile in mongo_urls:
         return mongo_urls[profile]
     raise Exception("Unknown environment")
+
+class Role(Enum):
+    SRE="SRE"
+    Engineering="Engineering"
+    Others="Others"
+
+
+class OnboardingOffffBoardingUserRequest(BaseModel):
+    username: str
