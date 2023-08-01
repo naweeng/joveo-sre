@@ -15,14 +15,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 
-git_token = os.getenv("GIT_TOKEN")
-g = Github(git_token)
-
-
-GRAFANA_API_KEY = os.getenv("GRAFANA_API_KEY")
-
-grafana_org_api_endpoint = "https://grafana.com/api/orgs"
-
 def generate_random_password():
     length = 16
     characters = string.ascii_letters + string.digits + string.punctuation
