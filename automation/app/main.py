@@ -11,7 +11,7 @@ app = FastAPI()
     
 
 
-@app.post('/joveo/user_onboarding', tags=["Onboard / Offboard"], description="Endpoint for user onboarding. This will create a user in all AWS ENVs and Joveo Github right now.")
+@app.post('/joveo/user_onboarding', tags=["Onboard / Offboard"], description="Endpoint for user onboarding. This will create user in all AWS ENVs, Grafana and Joveo Github right now.")
 def create_user_everywhere(username: str, role: Role, github_username: Optional[str] = None):
     try:
         if role == Role.SRE:
@@ -35,6 +35,11 @@ def create_user_everywhere(username: str, role: Role, github_username: Optional[
         if github_username:
             invite_github_user(github_username)
             msg = f"User {username} created successfully in applicable AWS stacks and Github. AWS Login details have been sent over email."
+        
+        for grafanaenv in GrafanaENV:
+            invite_grafana_user(username, grafanaenv)
+            # print(grafanaenv, grafanaenv.value)
+            msg = f"User {username} created successfully in applicable AWS stacks, Grafana and Github. AWS Login details have been sent over email."
 
         return msg
 
@@ -42,7 +47,7 @@ def create_user_everywhere(username: str, role: Role, github_username: Optional[
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete('/joveo/user_offboarding', tags=["Onboard / Offboard"], description="Endpoint for user offboarding. This will delete the user from all AWS ENVs and Joveo Github right now.")   
+@app.delete('/joveo/user_offboarding', tags=["Onboard / Offboard"], description="Endpoint for user offboarding. This will delete user from all AWS ENVs, Grafana and Joveo Github right now.")   
 def delete_user_from_everywhere(username: str, github_username: Optional[str] = None):
     try:
         for stack in Stack:
@@ -53,6 +58,11 @@ def delete_user_from_everywhere(username: str, github_username: Optional[str] = 
         if github_username:
             remove_github_user(github_username)
             msg = f"User {username} deleted successfully in applicable AWS stacks and Github."
+
+        for grafanaenv in GrafanaENV:
+            delete_user_grafana(username, stack=grafanaenv.value)
+            # print(grafanaenv, grafanaenv.value)
+            msg = f"User {username} Deleted successfully in applicable AWS stacks, Grafana and Github. AWS Login details have been sent over email."
 
         return msg
     except Exception as e:  
@@ -155,7 +165,7 @@ def create_mongodb_user(request: MongoUserRequest, profile: MONGO, role: MONGO_R
         if is_joveo_user:
             password = generate_random_password()
         else:
-            password = "manishtest123" #os.getenv("DEFAULT_MONGO_PASS")
+            password = os.getenv("DEFAULT_MONGO_PASS")
         command = {
             'createUser': username,
             'pwd': password,
@@ -240,6 +250,7 @@ def grant_role_to_user(request:MongoUserRequest, profile: MONGO, role_name: str 
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.patch("/mongo/reset_password", tags=["MONGO"], description="use this to reset a user's mongo password")
 def reset_mongodb_password(request: MongoUserRequest, profile: MONGO):
     try:
@@ -278,65 +289,31 @@ def remove_github_user_directly(github_username: str):
     return {"message": f"{github_username} has been removed from Joveo GitHub repository."}
 
 
-@app.post("/joveo/invite_grafana_user/{username}", tags=["Grafana"])
-def invite_user_to_grafana(username: str):
-    invite_grafana_user(username)
-    return {"message": f"{username} has been invited to Joveo Grafana."}
+@app.post("/grafana/invite_grafana_user/{username}", tags=["Grafana"])
+def invite_user_to_grafana(username: str, GrafanaStack: GrafanaENV):
+    invite_grafana_user(username, GrafanaStack)
+    return {"message": f"{username} has been invited to {GrafanaStack.value} Grafana."}
 
 
-# @app.delete("/grafana/delete_users", tags=["Grafana"])
-# def delete_user_from_grafana(email: str):
-#     try:
-#         environments = {
-#             "prod": {
-#                 "endpoint": f"{grafana_api_endpoint}/api/org/users",
-#                 "headers": grafana_api_headers,
-#             },
-#             "stage": {
-#                 "endpoint": f"{grafana_stage_api_endpoint}/api/org/users",
-#                 "headers": grafana_stage_api_headers,
-#             }
-#         }
+@app.delete("/grafana/delete_user/{username}", tags=["Grafana"])
+def delete_user_from_grafana(username: str, GrafanaStack: GrafanaENV):
+    try:
+        if GrafanaStack ==GrafanaENV.Joveo:
+            response = delete_user_grafana(username, stack="joveo")
+        elif GrafanaStack == GrafanaENV.Jobcloud:
+            response = delete_user_grafana(username, stack="jobcloudprogrammatic")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid Grafana stack provided.")
 
-#         user_deleted_env = [] 
+        if response is None:
+            return {"message": f"{username} has been removed from {GrafanaStack.value} Grafana."}
+        else:
+            return response
 
-#         for environment, config in environments.items():
-#             response = requests.get(
-#                 config["endpoint"],
-#                 headers=config["headers"],
-#             )
-#             response.raise_for_status()  # will raise exception for non-2xx status codes
-#             # print(config["endpoint"], config["headers"])
-#             users = response.json()
-#             user_found_in_env = False  
+    except Exception as e:
+        raise Exception(f"An error occurred: {str(e)}")
 
-#             for user in users:
-#                 if user["email"] == email:
-#                     delete_user_grafana(
-#                         environment=environment,
-#                         userid=user["userId"],
-#                         username=email,
-#                         api_headers=config["headers"],
-#                         api_endpoint=config["endpoint"]
-#                     )
-#                     print(email, user["userId"], environment)
-#                     user_deleted_env.append(environment)
-#                     user_found_in_env = True
 
-#             if not user_found_in_env:
-#                 print(f"User with email '{email}' not found in '{environment}' environment.")
-
-#         if user_deleted_env:
-#             deleted_env_str = ", ".join(user_deleted_env)
-#             return {"message": f"User with email '{email}' deleted successfully from the following environments: {deleted_env_str}."}
-#         else:
-#             return {"message": f"User with email '{email}' not found in any environment."}
-
-#     except requests.exceptions.RequestException as e:
-#         return {"error": f"Error occurred while sending the request: {str(e)}"}
-
-#     except Exception as e:
-#         return {"error": f"An error occurred: {str(e)}"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=80)
