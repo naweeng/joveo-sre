@@ -92,7 +92,8 @@ class Role(Enum):
 class OnboardingOffffBoardingUserRequest(BaseModel):
     username: str
 
-
+git_token = os.getenv("GIT_TOKEN")
+g = Github(git_token)
 GRAFANA_API_KEY = os.getenv("GRAFANA_API_KEY")
 GRAFANA_JC_API_KEY = os.getenv("GRAFANA_JC_API_KEY")
 GRAFANA_API_ADMIN_KEY = os.getenv("GRAFANA_API_ADMIN_KEY")
