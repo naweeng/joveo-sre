@@ -7,6 +7,12 @@ import string
 import requests
 from pymongo import MongoClient
 from github import Github
+import json
+import logging
+
+
+
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 
 git_token = os.getenv("GIT_TOKEN")
@@ -140,9 +146,11 @@ def create_or_update_file(repository_owner, repository_name, file_path, file_con
         # Check if the file already exists
         contents = repo.get_contents(file_path)
         repo.update_file(contents.path, commit_message, file_content, contents.sha)
+        logging.info(f"File {file_path} updated in GitHub repository.")
     except Exception as e:
         # Create the file
         repo.create_file(file_path, commit_message, file_content)
+        logging.info(f"File {file_path} created in GitHub repository.")
 
 
 def invite_github_user(github_username):
@@ -171,9 +179,10 @@ resource "github_team_membership" "github_team_membership_{github_username}" {{
         # Create or update the file on GitHub
         create_or_update_file(repository_owner, repository_name, file_path, file_content, commit_message)
 
-        print(f"Terraform file generated for {github_username} and added to GitHub repository.")
+        logging.info(f"Terraform file generated for {github_username} and added to GitHub repository.")
 
     except Exception as e:
+        logging.error(f"Error: {str(e)}")
         return {"error": str(e)}
 
 def delete_file(repository_owner, repository_name, file_path, commit_message):
@@ -228,28 +237,94 @@ def invite_grafana_user(username):
         print(f'An error occurred: {str(e)}')
 
 
-# def delete_user_grafana(environment, userid, username, api_headers, api_endpoint):
-#     try:
-#         if environment == "prod":
-#             grafana_api_headers = api_headers
-#             grafana_api_endpoint = api_endpoint
-#         elif environment == "stage":
-#             grafana_api_headers = api_headers
-#             grafana_api_endpoint = api_endpoint
-#         else:
-#             raise ValueError("Invalid environment specified")
+def invite_grafana_user(username, GrafanaStack):
+    try:
+        data = json.dumps({
+            "email": username,
+            "source": "non-staff-invite",
+            "role": "Viewer",
+            "billing": 0,
+        })
+        if GrafanaStack == GrafanaENV.Joveo:
+            response = requests.post(
+                f'{grafana_org_api_endpoint}/joveo/invites',
+                headers=grafana_org_api_headers,
+                data=data,
+            )
+            response.raise_for_status()
+            logging.info(f"{username} has been invited to Joveo Grafana")
 
-#         response = requests.delete(
-#             f"{grafana_api_endpoint}/{userid}",
-#             headers=grafana_api_headers,
-#         )
-#         response.raise_for_status()
+        elif GrafanaStack == GrafanaENV.Jobcloud:
+            response = requests.post(
+                f'{grafana_org_api_endpoint}/jobcloudprogrammatic/invites',
+                headers=grafana_jc_org_api_headers,
+                data=data,
+            )
+            response.raise_for_status()
+            logging.info(f"{username} has been invited to JC Grafana")
 
-#         print(f"User {username} with {userid} deleted successfully from {environment}.")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f'Error occurred while sending the request: {str(e)}')
 
-#     except requests.exceptions.RequestException as e:
-#         raise Exception(f"Error occurred while sending the request: {str(e)}")
+    except Exception as e:
+        raise Exception(f'An error occurred: {str(e)}')
 
-#     except Exception as e:
-#         raise Exception(f"An error occurred: {str(e)}")
+
+
+def remove_user_grafana(username, user_login, stack):
+    try:
+        if stack == "joveo":
+            response = requests.delete(
+                f'{grafana_org_api_endpoint}/joveo/members/{user_login}',
+                headers=grafana_org_api_headers
+            )
+            # response.raise_for_status()
+            logging.info(f"{username} with login {user_login} has been deleted from Joveo Grafana")
+
+        elif stack == "jobcloudprogrammatic":
+            response = requests.delete(
+                f'{grafana_org_api_endpoint}/jobcloudprogrammatic/members/{user_login}',
+                headers=grafana_jc_org_api_headers
+            )
+            # response.raise_for_status()
+            logging.info(f"{username} with login {user_login} has been deleted from JC Grafana")
+
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error occurred while sending the request: {str(e)}")
+
+    except Exception as e:
+        raise Exception(f"An error occurred: {str(e)}")
+
+
+
+def delete_user_grafana(username, stack):
+    try:
+        response = requests.get(
+            f'{grafana_api_endpoint}/api/org/users',
+            headers=grafana_api_headers
+        )
+        users = response.json()
+
+        user_found = False
+        for user in users:
+            if user["email"] == username:
+                user_found = True
+                user_login = user["login"]
+                logging.info(f"User found: {username} ({user_login}) in {stack} Grafana.")
+                remove_user_grafana(username, user_login, stack)  
+                break
+
+        if not user_found:
+            logging.warning(f"User with email '{username}' not found in {stack} Grafana.")
+            return {"message": f"User with email '{username}' not found in {stack} Grafana."}
+
+        # response.raise_for_status()
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error occurred while sending the request: {str(e)}")
+        raise Exception(f"Error occurred while sending the request: {str(e)}")
+
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        raise Exception(f"An error occurred: {str(e)}")
 
