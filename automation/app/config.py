@@ -12,6 +12,10 @@ class OnboardingOffBoardingUserRequest(BaseModel):
 class MongoUserRequest(BaseModel):
     username : str
 
+class GrafanaENV(Enum):
+    Joveo = "joveo"
+    Jobcloud = "jobcloudprogrammatic"
+
 class Stack(Enum):
     JOVEO_PROD = "aws-prod-joveo"
     JOVEO_STAGE = "aws-stage-joveo"
@@ -87,3 +91,30 @@ class Role(Enum):
 
 class OnboardingOffffBoardingUserRequest(BaseModel):
     username: str
+
+
+GRAFANA_API_KEY = os.getenv("GRAFANA_API_KEY")
+GRAFANA_JC_API_KEY = os.getenv("GRAFANA_JC_API_KEY")
+GRAFANA_API_ADMIN_KEY = os.getenv("GRAFANA_API_ADMIN_KEY")
+grafana_org_api_endpoint = "https://grafana.com/api/orgs"
+grafana_api_endpoint = "https://joveoprodaws.grafana.net"
+
+
+grafana_api_headers = {
+            'Authorization':
+                f"Bearer {GRAFANA_API_ADMIN_KEY}",
+            'Content-Type': "application/json",
+        }
+
+
+grafana_org_api_headers = {
+            'Authorization':
+                f"Bearer {GRAFANA_API_KEY}",
+            'Content-Type': "application/json",
+        }
+
+grafana_jc_org_api_headers = {
+            'Authorization':
+                f"Bearer {GRAFANA_JC_API_KEY}",
+            'Content-Type': "application/json",
+        }
