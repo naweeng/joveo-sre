@@ -1,18 +1,48 @@
 from .config import *
-import smtplib
-import os
+import boto3
 from email.mime.text import MIMEText
-import secrets
-import string
+import smtplib
 import requests
 from pymongo import MongoClient
-from github import Github
+import secrets
+import string
 import json
 import logging
+from github import Github
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+ 
+
+
+
+def get_admin_emails():
+    USER_EMAIL = get_secret()["gmail_owner_email"]
+
+    # Set the necessary scopes
+    scopes = ["https://www.googleapis.com/auth/admin.directory.group.member.readonly"]
+    secret_info = json.loads(get_secret()["service_account"])
+    credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            secret_info, scopes,
+        )
+    delegated_credentials = credentials.create_delegated(USER_EMAIL)
+    directory_service = build("admin", "directory_v1", credentials=delegated_credentials)
+
+    # Specify the groupKey (group's email address)
+    group_key = "sre-team@joveo.com"
+
+    # List members of the group
+    members = directory_service.members().list(groupKey=group_key).execute()
+    # print(members)
+    admin_emails = [member['email'] for member in members['members']]
+    return admin_emails
+
+    # print(admin_emails)
+# get_admin_emails()
 
 
 def generate_random_password():
@@ -24,16 +54,21 @@ def generate_random_password():
            any(char.isupper() for char in password) and \
            any(char.isdigit() for char in password) and \
            any(char in string.punctuation for char in password) and \
-           "'" not in password and '"' not in password and "`" not in password:
+           "'" not in password and '"' not in password and "`" not in password and "-" not in password:
             return password
         else:
             continue
+# print(generate_random_password())
+
+
+
+
 
 def sending_mail(username, msg, profile):
     
     email_body = msg
-    sender_email = os.getenv("GMAIL_ID")
-    sender_password = os.getenv("GMAIL_TOKEN")
+    sender_email = get_secret()["sender_email"]
+    sender_password = get_secret()["sender_password"]
     receiver_email = f"{username}" #f"{user}@example.com"
     subject = f'[{profile.name}] User Credentials'
     message = MIMEText(email_body)
@@ -47,6 +82,7 @@ def sending_mail(username, msg, profile):
     server.login(sender_email, sender_password)
     server.sendmail(sender_email, receiver_email, message.as_string())
     server.quit()
+
 
 
 def onboard_user(username, profile, session):
