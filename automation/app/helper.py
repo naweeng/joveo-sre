@@ -117,7 +117,7 @@ def onboard_user(username, profile, session):
         sending_mail(username, msg, profile)
         logging.info(f"created {username} in {profile.name} account")
         return True
-    except iam.execptions.EntityAlreadyExistsException:
+    except iam.exceptions.EntityAlreadyExistsException:
         logging.error(f"User {username} already exists in {profile.name}.")
         return False
 
