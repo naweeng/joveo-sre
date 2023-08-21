@@ -100,12 +100,11 @@ async def login(request: Request):
 async def token(request: Request):
     # Perform Google OAuth
     token = await oauth.google.authorize_access_token(request)
-    # print(token)
     user = request.session.get('user')
-    # print(user)
     user = token['userinfo']
+    email = user['email']
     request.session['user'] = dict(user)
-
+    logging.info(f"User {email} logged in.")
     return RedirectResponse(url='/docs')
 
 
@@ -124,14 +123,13 @@ async def health_check():
 
 # Try to get the logged in user
 async def get_user(request: Request) -> Optional[dict]:
-    global loggeduser
     user = request.session.get('user')
     if user is not None:
-        loggeduser =  user["email"]
         return user
     else:
         raise HTTPException(status_code=403, detail='You have been logged out. Please sign in again.')
     return None
+
 
 
 # Call the function to get the user's groups
@@ -148,10 +146,11 @@ async def get_user(request: Request) -> Optional[dict]:
 #     response = get_swagger_ui_html(openapi_url='/openapi.json', title='Documentation')
 #     return response
 
+
 @app.post('/joveo/user_onboarding', tags=["Onboard / Offboard"], description="Endpoint for user onboarding. This will create user in all AWS ENVs, Grafana and Joveo Github right now.")
-async def create_user_everywhere(username: str, github_username: Optional[str] = None, current_user: Optional[dict] = Depends(get_user)):
-        if username != loggeduser and loggeduser not in admin_emails:
-            detail = (f"You are not allowed to create user with a different email. Username provided:- {username} Logged-in user:- {loggeduser}")
+async def create_user_everywhere(username: str, github_username: Optional[str] = None, request: dict = Depends(get_user)):
+        if username != request['email'] and request['email'] not in admin_emails:
+            detail = (f"You are not allowed to create a user with a different email. Please use your email")
             raise HTTPException(status_code=403, detail=detail)
         try:
 
@@ -177,7 +176,7 @@ async def create_user_everywhere(username: str, github_username: Optional[str] =
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/aws/get_users', tags=["AWS"], description="You can use this to list all the users in an AWS Account.")
-async def getting_all_users(profile: Stack):
+async def getting_all_users(profile: Stack, current_user: Optional[dict] = Depends(get_user) ):
     try:
         allusers = []
         session = boto3.Session(profile_name=profile.value)
@@ -193,9 +192,10 @@ async def getting_all_users(profile: Stack):
 
 
 @app.post('/aws/create_user', tags=["AWS"], description="use this to create a user or provide a list of users to be created in an AWS account")
-async def create_user(username: str, profile: Stack, current_user: Optional[dict] = Depends(get_user)):
+async def create_user(username: str, profile: Stack, request: dict = Depends(get_user)):
     # Check if the current user is trying to create a user with their own email
-    if username != loggeduser and loggeduser not in admin_emails :
+    # print(request)
+    if username != request['email'] and request['email'] not in admin_emails:
         raise HTTPException(status_code=403, detail="You are not allowed to create user with a different email.")
     
     session = boto3.Session(profile_name=profile.value)
@@ -212,8 +212,8 @@ async def create_user(username: str, profile: Stack, current_user: Optional[dict
 
 
 @app.delete('/aws/delete_user', tags=["AWS"], description="use this to delete a user or provide a list of users to be created in a AWS account")
-async def delete_user(username: str, profile: Stack,current_user: Optional[dict] = Depends(get_user)):
-    if loggeduser not in admin_emails :
+async def delete_user(username: str, profile: Stack, request: dict = Depends(get_user)):
+    if request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to delete a user.")
     session = boto3.Session(profile_name=profile.value)
     try:
@@ -227,8 +227,8 @@ async def delete_user(username: str, profile: Stack,current_user: Optional[dict]
     
     
 @app.patch('/aws/reset_password', tags=["AWS"], description="use this to reset creds in AWS account")
-def reset_user_creds(username: str, profile: Stack, current_user: Optional[dict] = Depends(get_user)):
-    if username != loggeduser and loggeduser not in admin_emails :
+async def reset_user_creds(username: str, profile: Stack, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
     session = boto3.Session(profile_name=profile.value)
     try:
@@ -250,8 +250,8 @@ def reset_user_creds(username: str, profile: Stack, current_user: Optional[dict]
     
 
 @app.post('/aws/remove_mfa', tags=["AWS"], description="use this to reset MFA in AWS account")
-def remove_mfa(username: str, profile: Stack, current_user: Optional[dict] = Depends(get_user)):
-    if username != loggeduser and loggeduser not in admin_emails :
+def remove_mfa(username: str, profile: Stack, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to remove MFA of a different user.")
     session = boto3.Session(profile_name=profile.value)
     iam = session.client('iam')
@@ -278,8 +278,8 @@ def remove_mfa(username: str, profile: Stack, current_user: Optional[dict] = Dep
 
 
 @app.delete('/joveo/user_offboarding', tags=["Onboard / Offboard"], description="Endpoint for user offboarding. This will delete user from all AWS ENVs, Grafana and Joveo Github right now.")   
-def delete_user_from_everywhere(username: str, github_username: Optional[str] = None, current_user: Optional[dict] = Depends(get_user)):
-    if loggeduser not in admin_emails :
+def delete_user_from_everywhere(username: str, github_username: Optional[str] = None, request: dict = Depends(get_user)):
+    if request['email'] not in admin_emails:
         raise HTTPException(status_code=403, detail="You are not allowed to delete a user.")
     try:
         for stack in Stack:
@@ -344,8 +344,8 @@ def show_users(profile: MONGO):
 
 
 @app.post('/mongo/create_user', tags=["MONGO"], description="use this to create a user in a mongo.") 
-def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, current_user: Optional[dict] = Depends(get_user) ):
-    if username != loggeduser and loggeduser not in admin_emails :
+def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, request: dict = Depends(get_user) ):
+    if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to create a user with a different email.")
     # Establish a connection to MongoDB
     connection_string = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
@@ -383,8 +383,8 @@ def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, curren
         client.close()
 
 @app.delete("/mongo/delete_user", tags=["MONGO"], description="use this to delete a user from a mongo.")
-def delete_mongodb_user(username:str, profile: MONGO, current_user: Optional[dict] = Depends(get_user) ):
-    if loggeduser not in admin_emails :
+def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(get_user)):
+    if request['email'] not in admin_emails:
         raise HTTPException(status_code=403, detail="You are not allowed to delete a user.")
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
@@ -434,8 +434,8 @@ def create_role(profile: MONGO, role_name: str, db: str, collection: str):
 
 
 @app.post("/mongo/grant_role_user", tags=["MONGO"], description="use this to grant a role to a user.")
-def grant_role_to_user(username: str, profile: MONGO, role_name: str, current_user: Optional[dict] = Depends(get_user) ):
-    if username != loggeduser and loggeduser not in admin_emails :
+def grant_role_to_user(username: str, profile: MONGO, role_name: str, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to grant a role to a different user.")
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
@@ -448,8 +448,8 @@ def grant_role_to_user(username: str, profile: MONGO, role_name: str, current_us
         return {"error": str(e)}
 
 @app.patch("/mongo/reset_password", tags=["MONGO"], description="use this to reset a user's mongo password")
-def reset_mongodb_password(username: str, profile: MONGO, current_user: Optional[dict] = Depends(get_user)):
-    if username != loggeduser and loggeduser not in admin_emails :
+def reset_mongodb_password(username: str, profile: MONGO, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
@@ -481,8 +481,8 @@ def invite_github_user_directly(github_username: str):
 
 
 @app.delete("/joveo/remove_github_user/{github_username}", tags=["Github"])
-def remove_github_user_directly(github_username: str, current_user: Optional[dict] = Depends(get_user)):
-    if loggeduser not in admin_emails :
+def remove_github_user_directly(github_username: str, request: dict = Depends(get_user)):
+    if request['email'] not in admin_emails  :
         raise HTTPException(status_code=403, detail="You are not allowed to remove a user.")
     remove_github_user(github_username)
     return {"message": f"{github_username} has been removed from Joveo GitHub repository."}
@@ -495,8 +495,8 @@ def invite_user_to_grafana(username: str, GrafanaStack: GrafanaENV):
 
 
 @app.delete("/grafana/delete_user/{username}", tags=["Grafana"])
-def delete_user_from_grafana(username: str, GrafanaStack: GrafanaENV, current_user: Optional[dict] = Depends(get_user)):
-    if loggeduser not in admin_emails :
+def delete_user_from_grafana(username: str, GrafanaStack: GrafanaENV, request: dict = Depends(get_user)):
+    if request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to remove a user.")
     try:
         if GrafanaStack ==GrafanaENV.Joveo:
