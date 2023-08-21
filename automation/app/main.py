@@ -127,7 +127,7 @@ async def get_user(request: Request) -> Optional[dict]:
     if user is not None:
         return user
     else:
-        raise HTTPException(status_code=403, detail='You have been logged out. Please sign in again.')
+        raise HTTPException(status_code=403, detail='Your session has expired. Please log in again.')
     return None
 
 
@@ -176,7 +176,7 @@ async def create_user_everywhere(username: str, github_username: Optional[str] =
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/aws/get_users', tags=["AWS"], description="You can use this to list all the users in an AWS Account.")
-async def getting_all_users(profile: Stack, current_user: Optional[dict] = Depends(get_user) ):
+async def getting_all_users(profile: Stack):
     try:
         allusers = []
         session = boto3.Session(profile_name=profile.value)
