@@ -16,6 +16,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING) 
  
 
 
@@ -91,7 +93,7 @@ def onboard_user(username, profile, session):
         # Check if the user already exists
         try:
             iam.get_user(UserName=username)
-            print(f"User '{username}' already exists in {profile.name}. Skipping user creation.")
+            logging.info(f"User '{username}' already exists in {profile.name}. Skipping user creation.")
             return False
         except iam.exceptions.NoSuchEntityException:
             pass
@@ -113,11 +115,12 @@ def onboard_user(username, profile, session):
         msg = f"Hi {username.split('@')[0]},\n\nYour IAM user credentials for {profile.name}, are as follows:\n\nUsername: {username}\nPassword: {password}\n\nPlease use the following link to log in to the AWS Management Console: {get_aws_account_url(profile)}\n"
         # print(msg)
         sending_mail(username, msg, profile)
-        print(f"created {username} in {profile.name} account")
+        logging.info(f"created {username} in {profile.name} account")
         return True
-    except Exception as e:
-        print(f"ERROR for {username} in {profile.name}: {str(e)}")
-    return False
+    except iam.execptions.EntityAlreadyExistsException:
+        logging.error(f"User {username} already exists in {profile.name}.")
+        return False
+
 
 
 def offboard_user(username, profile, session):
@@ -162,9 +165,12 @@ def offboard_user(username, profile, session):
 
         # Delete the user
         iam.delete_user(UserName=username)
-        print(f"User {username} deleted successfully from {profile.name}")
+        logging.info(f"User {username} deleted successfully from {profile.name}")
+        return True
     except iam.exceptions.NoSuchEntityException:
-        print(f"User {username} not found in {profile.name}.")
+        logging.error(f"User {username} not found in {profile.name}.")
+        return False
+
 
 g = Github(get_secret()["git_token"])
 
