@@ -12,3 +12,4 @@ pymongo==4.4.1
 requests==2.27.1
 starlette==0.27.0
 itsdangerous==2.1.2
+httpx==0.24.1
