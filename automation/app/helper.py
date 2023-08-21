@@ -166,6 +166,7 @@ def offboard_user(username, profile, session):
     except iam.exceptions.NoSuchEntityException:
         print(f"User {username} not found in {profile.name}.")
 
+g = Github(get_secret()["git_token"])
 
 def create_or_update_file(repository_owner, repository_name, file_path, file_content, commit_message):
     repo = g.get_repo(f"{repository_owner}/{repository_name}")
