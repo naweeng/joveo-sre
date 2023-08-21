@@ -193,7 +193,7 @@ async def getting_all_users(profile: Stack, current_user: Optional[dict] = Depen
 
 
 @app.post('/aws/create_user', tags=["AWS"], description="use this to create a user or provide a list of users to be created in an AWS account")
-def create_user(username: str, profile: Stack, current_user: Optional[dict] = Depends(get_user)):
+async def create_user(username: str, profile: Stack, current_user: Optional[dict] = Depends(get_user)):
     # Check if the current user is trying to create a user with their own email
     if username != loggeduser and loggeduser not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to create user with a different email.")
@@ -201,23 +201,27 @@ def create_user(username: str, profile: Stack, current_user: Optional[dict] = De
     session = boto3.Session(profile_name=profile.value)
     try:
         # Continue with user creation
-        onboard_user(username, profile, session)
-        # print(profile)
-
-        return f"{username} created successfully for {profile.name}. Login details shared over email."
+        created = onboard_user(username, profile, session)
+        if created:
+            return f"{username} created successfully for {profile.name}. Login details shared over email."
+        else:
+            return f"User {username} already exists in {profile.name}"
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 
 
 @app.delete('/aws/delete_user', tags=["AWS"], description="use this to delete a user or provide a list of users to be created in a AWS account")
-def delete_user(username: str, profile: Stack,current_user: Optional[dict] = Depends(get_user)):
+async def delete_user(username: str, profile: Stack,current_user: Optional[dict] = Depends(get_user)):
     if loggeduser not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to delete a user.")
     session = boto3.Session(profile_name=profile.value)
     try:
-        offboard_user(username, profile, session)
-        return f"Users {username} deleted successfully from {profile.name}."
+        deleted = offboard_user(username, profile, session)
+        if deleted:
+            return f"User {username} deleted successfully from {profile.name}."
+        else:
+            return f"User {username} not found in {profile.name}."
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
