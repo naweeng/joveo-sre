@@ -355,12 +355,7 @@ def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, reques
     client = MongoClient(connection_string)
     try:
         db = client[database]
-        # Determine if the username contains "@joveo.com"
-        is_joveo_user = "@joveo.com" in username
-        if is_joveo_user:
-            password = generate_random_password()
-        else:
-            password = DEFAULT_MONGO_PASS
+        password = generate_random_password()
         command = {
             'createUser': username,
             'pwd': password,
@@ -368,14 +363,10 @@ def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, reques
         }
         db.command(command)
 
-        if is_joveo_user:
-            # Send login details to the user's email
-            msg = f"Hi {username.split('@')[0]},\n\nYour MongoDB user credentials are as follows for {profile.name}:\n\nUsername: {username}\nPassword: {password}\n"
-            sending_mail(username, msg, profile)
-            return f"User '{username}' created successfully in {profile.name}. Login details have been sent to the email address."
-        else:
-            return f"User '{username}' created successfully in {profile.name}. Login details: Username: {username}, Password: {password}"
-
+        # Send login details to the user's email
+        msg = f"Hi {username.split('@')[0]},\n\nYour MongoDB user credentials are as follows for {profile.name}:\n\nUsername: {username}\nPassword: {password}\n"
+        sending_mail(username, msg, profile)
+        return f"User '{username}' created successfully in {profile.name}. Login details have been sent to the email address."
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -394,6 +385,39 @@ def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(ge
             return {"message": f"User '{username}' deleted from database '{profile.name}'"}
     except Exception as e:
         return {"error": str(e)}
+
+
+
+@app.post('/mongo/create_application_user', tags=["MONGO"], description="use this to create a user for your app in a mongodb.") 
+def create_mongodb_application_user(your_email: str,app_username: str, profile: MONGO, role: MONGO_ROLES, request: dict = Depends(get_user) ):
+    if your_email != request['email'] and request['email'] not in admin_emails :
+        raise HTTPException(status_code=403, detail="You are not allowed to create a user with a different email.")
+    # Establish a connection to MongoDB
+    connection_string = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
+
+    # connection_string = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
+    database = 'admin'
+    client = MongoClient(connection_string)
+    try:
+        db = client[database]
+        password = generate_random_password()
+        command = {
+            'createUser': app_username,
+            'pwd': password,
+            'roles': [{"role": role.value, "db": database}]
+        }
+        db.command(command)
+
+        # Send login details to the user's email
+        msg = f"Hi {your_email.split('@')[0]},\n\nMongoDB credentials for {app_username} are as follows for {profile.name}:\n\nUsername: {app_username}\nPassword: {password}\n"
+        sending_mail(your_email, msg, profile)
+        return f"User '{app_username}' created successfully in {profile.name}. Login details have been sent to the your email address."
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        client.close()
+
     
 @app.get("/mongo/show_roles", tags=["MONGO"])
 def show_roles(profile: MONGO, on_which_db: str):
