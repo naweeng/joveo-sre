@@ -392,6 +392,9 @@ def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(ge
 def create_mongodb_application_user(your_email: str,app_username: str, profile: MONGO, role: MONGO_ROLES, request: dict = Depends(get_user) ):
     if your_email != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to create a user with a different email.")
+        
+    if "@joveo.com" in app_username:
+        raise HTTPException(status_code=403, detail="You are not allowed to create a user with @joveo.com. Please use this endpoint to create an application user only.")
     # Establish a connection to MongoDB
     connection_string = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
 
@@ -492,6 +495,10 @@ def reset_mongodb_personal_user_password(username: str, profile: MONGO, request:
 def reset_application_user_password(your_email: str,app_username: str, profile: MONGO, request: dict = Depends(get_user)):
     if your_email != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
+        
+    if "@joveo.com" in app_username:
+        raise HTTPException(status_code=403, detail="You are not allowed to reset creds for users from @joveo.com. Please use this endpoint to reset creds of an application user only.")
+        
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
         with MongoClient(mongo_uri) as client:
