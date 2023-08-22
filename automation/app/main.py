@@ -388,7 +388,7 @@ def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(ge
 
 
 
-@app.post('/mongo/create_application_user', tags=["MONGO"], description="use this to create a user for your app in a mongodb.") 
+@app.post('/mongo/create_application_user', tags=["MONGO"], description="use this to create a user for your app in a MongoDB. Your email is required to send login details of this app user back to you") 
 def create_mongodb_application_user(your_email: str,app_username: str, profile: MONGO, role: MONGO_ROLES, request: dict = Depends(get_user) ):
     if your_email != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to create a user with a different email.")
@@ -488,7 +488,7 @@ def reset_mongodb_personal_user_password(username: str, profile: MONGO, request:
     except Exception as e:
         return {"error": str(e)}
 
-@app.patch("/mongo/reset_application_user_password", tags=["MONGO"], description="use this to reset application user's mongo password")
+@app.patch("/mongo/reset_application_user_password", tags=["MONGO"], description="use this to reset application user's mongo password. Your email is required to send new password of this app user back to you")
 def reset_application_user_password(your_email: str,app_username: str, profile: MONGO, request: dict = Depends(get_user)):
     if your_email != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
