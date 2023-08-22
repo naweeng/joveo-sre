@@ -471,27 +471,37 @@ def grant_role_to_user(username: str, profile: MONGO, role_name: str, request: d
     except Exception as e:
         return {"error": str(e)}
 
-@app.patch("/mongo/reset_password", tags=["MONGO"], description="use this to reset a user's mongo password")
-def reset_mongodb_password(username: str, profile: MONGO, request: dict = Depends(get_user)):
+@app.patch("/mongo/reset_password", tags=["MONGO"], description="use this to reset your personal user's mongo password")
+def reset_mongodb_personal_user_password(username: str, profile: MONGO, request: dict = Depends(get_user)):
     if username != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
         with MongoClient(mongo_uri) as client:
-            is_joveo_user = "@joveo.com" in username
-            if is_joveo_user:
-                password = generate_random_password()
-            else:
-                password = DEFAULT_MONGO_PASS        
+            password = generate_random_password()     
             database = client['admin']
             database.command('updateUser', username, pwd=password)
-            if is_joveo_user:
                 # Send login details to the user's email
-                msg = f"Hi {username.split('@')[0]},\n\nPassword reset for user {username} in {profile.name}:\n\n\nNew Password: {password}\n"
-                sending_mail(username, msg, profile)
-                return f"User '{username}' Password reset successfully on {profile.name}. Login details have been sent to the email address."
-            else:
-                return f"User '{username}' Password reset successfully on {profile.name}. New Password: {password}"
+            msg = f"Hi {username.split('@')[0]},\n\nPassword reset for user {username} in {profile.name}:\n\n\nNew Password: {password}\n"
+            sending_mail(username, msg, profile)
+            return f"User '{username}' Password reset successfully on {profile.name}. Login details have been sent to the email address."
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.patch("/mongo/reset_application_user_password", tags=["MONGO"], description="use this to reset application user's mongo password")
+def reset_application_user_password(your_email: str,app_username: str, profile: MONGO, request: dict = Depends(get_user)):
+    if your_email != request['email'] and request['email'] not in admin_emails :
+        raise HTTPException(status_code=403, detail="You are not allowed to reset creds of a different user.")
+    try:
+        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
+        with MongoClient(mongo_uri) as client:
+            password = generate_random_password()     
+            database = client['admin']
+            database.command('updateUser', app_username, pwd=password)
+                # Send login details to the user's email
+            msg = f"Hi {your_email.split('@')[0]},\n\nPassword reset for user {app_username} in {profile.name}:\n\n\nNew Password: {password}\n"
+            sending_mail(your_email, msg, profile)
+            return f"User '{app_username}' Password reset successfully on {profile.name}. Login details have been sent to your email address."
     except Exception as e:
         return {"error": str(e)}
     
