@@ -248,30 +248,6 @@ def remove_github_user(github_username: str):
 
 
 
-def invite_grafana_user(username):
-    try:
-        data = json.dumps({
-            "email": username,
-            "source": "non-staff-invite",
-            "role": "Viewer",
-            "billing": 0,
-        })
-        response = requests.post(
-            f'{grafana_org_api_endpoint}/invites',
-            headers=grafana_org_api_headers,
-            data=data,
-        )
-        response.raise_for_status()
-        # print(f'{username} {response.status_code} {response.json()}')
-        return(f"{username} has been invited to grafana")
-
-    except requests.exceptions.RequestException as e:
-        print(f'Error occurred while sending the request: {str(e)}')
-
-    except Exception as e:
-        print(f'An error occurred: {str(e)}')
-
-
 def invite_grafana_user(username, GrafanaStack):
     try:
         data = json.dumps({
