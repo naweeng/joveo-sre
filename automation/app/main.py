@@ -530,7 +530,9 @@ def remove_github_user_directly(github_username: str, request: dict = Depends(ge
 
 
 @app.post("/grafana/invite_user/{username}", tags=["Grafana"])
-def invite_user_to_grafana(username: str, GrafanaStack: GrafanaENV):
+def invite_user_to_grafana(username: str, GrafanaStack: GrafanaENV, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails :
+        raise HTTPException(status_code=403, detail="You are not allowed to invite a different user than yours.")
     invite_grafana_user(username, GrafanaStack)
     return {"message": f"{username} has been invited to {GrafanaStack.value} Grafana."}
 
