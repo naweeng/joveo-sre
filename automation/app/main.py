@@ -173,6 +173,7 @@ async def create_user_everywhere(username: str, github_username: Optional[str] =
 
             return msg
         except Exception as e:
+            logging.error(f"An error occurred: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/aws/get_users', tags=["AWS"], description="You can use this to list all the users in an AWS Account.")
@@ -188,6 +189,7 @@ async def getting_all_users(profile: Stack):
                 
         return allusers
     except Exception as e:  
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500,detail=str(e))
 
 
@@ -207,6 +209,7 @@ async def create_user(username: str, profile: Stack, request: dict = Depends(get
         else:
             return f"User {username} already exists in {profile.name}"
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
 
@@ -223,6 +226,7 @@ async def delete_user(username: str, profile: Stack, request: dict = Depends(get
         else:
             return f"User {username} not found in {profile.name}."
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
     
@@ -274,6 +278,7 @@ def remove_mfa(username: str, profile: Stack, request: dict = Depends(get_user))
     except iam.exceptions.NoSuchEntityException:
         raise Exception(f"IAM user {username} not found.")
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise Exception(str(e))
 
 
@@ -298,6 +303,7 @@ def delete_user_from_everywhere(username: str, github_username: Optional[str] = 
 
         return msg
     except Exception as e:  
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -312,6 +318,7 @@ def show_databases(profile: MONGO):
             database_names = client.list_database_names()
             return {"databases": database_names}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 @app.get("/mongo/show_collections/{db_on}", tags=["MONGO"])
@@ -323,6 +330,7 @@ def show_collections(profile: MONGO, db_on: str):
             collection_names = db.list_collection_names()
             return {"collections": collection_names}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 @app.get("/mongo/show_users", tags=["MONGO"])
@@ -366,8 +374,10 @@ def create_mongodb_user(username: str, profile: MONGO, role: MONGO_ROLES, reques
         # Send login details to the user's email
         msg = f"Hi {username.split('@')[0]},\n\nYour MongoDB user credentials are as follows for {profile.name}:\n\nUsername: {username}\nPassword: {password}\n"
         sending_mail(username, msg, profile)
+        logging.info(f"created {username} on {profile.name}")
         return f"User '{username}' created successfully in {profile.name}. Login details have been sent to the email address."
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
@@ -382,8 +392,10 @@ def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(ge
         with MongoClient(mongo_uri) as client:
             database = client['admin']
             database.command('dropUser', username)
+            logging.info(f"deleted {username} on {profile.name}")
             return {"message": f"User '{username}' deleted from database '{profile.name}'"}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 
@@ -414,8 +426,10 @@ def create_mongodb_application_user(your_email: str,app_username: str, profile: 
         # Send login details to the user's email
         msg = f"Hi {your_email.split('@')[0]},\n\nMongoDB credentials for {app_username} are as follows for {profile.name}:\n\nUsername: {app_username}\nPassword: {password}\n"
         sending_mail(your_email, msg, profile)
+        logging.info(f"created {app_username} on {profile.name}")
         return f"User '{app_username}' created successfully in {profile.name}. Login details have been sent to the your email address."
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
@@ -435,6 +449,7 @@ def show_roles(profile: MONGO, on_which_db: str):
             
             return {"roles": role_names}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
     finally:
         client.close()
@@ -453,9 +468,10 @@ def create_role(profile: MONGO, role_name: str, db: str, collection: str):
                         roles=[])
 
         client.close()
-
+        logging.info(f"created {role_name} on {profile.name}")
         return {"role": role_name, "message": f"Role {role_name} has been created on {str(db)}"}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 
@@ -470,8 +486,10 @@ def grant_role_to_user(username: str, profile: MONGO, role_name: str, request: d
         with MongoClient(mongo_uri) as client:
             database = client['admin']
             database.command("grantRolesToUser", username, roles=[{'role': role_name, 'db': 'admin'}])
+            logging.info(f"added {role_name} to {username} on {profile.name}")
             return {"message": f"added {role_name} to User '{username}' in '{profile.name}'"}
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 @app.patch("/mongo/reset_password", tags=["MONGO"], description="use this to reset your personal user's mongo password")
@@ -487,8 +505,10 @@ def reset_mongodb_personal_user_password(username: str, profile: MONGO, request:
                 # Send login details to the user's email
             msg = f"Hi {username.split('@')[0]},\n\nPassword reset for user {username} in {profile.name}:\n\n\nNew Password: {password}\n"
             sending_mail(username, msg, profile)
+            logging.info(f"Reset password for {username} done for {profile.name}")
             return f"User '{username}' Password reset successfully on {profile.name}. Login details have been sent to the email address."
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
 
 @app.patch("/mongo/reset_application_user_password", tags=["MONGO"], description="use this to reset application user's mongo password. Your email is required to send new password of this app user back to you")
@@ -508,8 +528,10 @@ def reset_application_user_password(your_email: str,app_username: str, profile: 
                 # Send login details to the user's email
             msg = f"Hi {your_email.split('@')[0]},\n\nPassword reset for user {app_username} in {profile.name}:\n\n\nNew Password: {password}\n"
             sending_mail(your_email, msg, profile)
+            logging.info(f"Reset password for {app_username} done for {profile.name}")
             return f"User '{app_username}' Password reset successfully on {profile.name}. Login details have been sent to your email address."
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
     
 
@@ -555,6 +577,7 @@ def delete_user_from_grafana(username: str, GrafanaStack: GrafanaENV, request: d
             return response
 
     except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
         raise Exception(f"An error occurred: {str(e)}")
 
 
