@@ -32,6 +32,7 @@ class MONGO(Enum):
     APPLY_MONGO_PROD = "apply-mongo"
     FNA_HEIMDALL_MONGO_PROD = "heimdall-mongo"
     FNA_PUBMAN_MONGO_PROD = "pubman-mongo"
+    FNA_NON_PPC_MONGO_PROD = "fna-non-ppc-mongo"
     DS_MONGO_PROD = "ds-mongo"
     TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
     TRACKING_CG_MONGO_PROD = "trk-cg-mongo"
@@ -41,6 +42,7 @@ class MONGO(Enum):
     TRK_CG_STAGE_MONGO = "trk-cg-stage-mongo"
     DS_STAGE_MONGO = "ds-stage-mongo"
     FNA_HEIMDALL_STAGE_MONGO = "fna-heimdall-stage-mongo"
+    FNA_NON_PPC_STAGE_MONGO = "fna-non-ppc-stage-mongo"
     APPLY_STAGE_MONGO = "apply-stage-mongo"
     # JC_GENERIC_MONGO = "jc-generic-mongo"
     # JC_HASHING_MONGO_PROD = "jc-hashing-mongo"
@@ -111,7 +113,9 @@ def get_mongo_url(profile: MONGO):
         MONGO.TRK_CG_STAGE_MONGO : get_secret()["TRK_CG_STAGE_MONGO"],
         MONGO.DS_STAGE_MONGO : get_secret()["DS_STAGE_MONGO"],
         MONGO.FNA_HEIMDALL_STAGE_MONGO : get_secret()["FNA_HEIMDALL_STAGE_MONGO"],
-        MONGO.APPLY_STAGE_MONGO : get_secret()["APPLY_STAGE_MONGO"]
+        MONGO.APPLY_STAGE_MONGO : get_secret()["APPLY_STAGE_MONGO"],
+        MONGO.FNA_NON_PPC_MONGO_PROD : get_secret()["FNA_NON_PPC_MONGO_PROD"],
+        MONGO.FNA_NON_PPC_STAGE_MONGO : get_secret()["FNA_NON_PPC_STAGE_MONGO"]
         # MONGO.JC_GENERIC_MONGO : os.getenv("JC_GENERIC_MONGO"),
         # MONGO.JC_HASHING_MONGO_PROD : os.getenv("JC_HASHING_MONGO_PROD"),
         # MONGO.JC_RULES_MONGO_PROD : os.getenv("JC_RULES_MONGO_PROD"),
