@@ -58,7 +58,6 @@ class MONGO(Enum):
 
 class MONGO_ROLES(Enum):
     READONLY = "readAnyDatabase"
-    READWRITE = "readWrite"
     CLUSTERMONITOR = "clusterMonitor"
 
 def get_aws_account_url(profile: Stack):

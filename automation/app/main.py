@@ -59,6 +59,7 @@ if SECRET_KEY is None:
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=3600)
 admin_emails = get_admin_emails()
+db_roles = ["root", "dbAdmin", "userAdmin", "dbOwner", "clusterManager", "clusterAdmin", "readWriteAnyDatabase", "userAdminAnyDatabase", "dbAdminAnyDatabase"]
 
 
 
@@ -401,7 +402,7 @@ def delete_mongodb_user(username:str, profile: MONGO, request: dict = Depends(ge
 
 
 @app.post('/mongo/create_application_user', tags=["MONGO"], description="use this to create a user for your app in a MongoDB. Your email is required to send login details of this app user back to you") 
-def create_mongodb_application_user(your_email: str,app_username: str, profile: MONGO, role: MONGO_ROLES, request: dict = Depends(get_user) ):
+def create_mongodb_application_user(your_email: str, app_username: str, profile: MONGO, request: dict = Depends(get_user) ):
     if your_email != request['email'] and request['email'] not in admin_emails :
         raise HTTPException(status_code=403, detail="You are not allowed to create a user with a different email.")
         
@@ -419,7 +420,7 @@ def create_mongodb_application_user(your_email: str,app_username: str, profile: 
         command = {
             'createUser': app_username,
             'pwd': password,
-            'roles': [{"role": role.value, "db": database}]
+            'roles': [{"role": "readWriteAnyDatabase", "db": database}]
         }
         db.command(command)
 
@@ -476,16 +477,18 @@ def create_role(profile: MONGO, role_name: str, db: str, collection: str):
 
 
 
-@app.post("/mongo/grant_role_user", tags=["MONGO"], description="use this to grant a role to a user.")
-def grant_role_to_user(username: str, profile: MONGO, role_name: str, request: dict = Depends(get_user)):
-    if username != request['email'] and request['email'] not in admin_emails :
+@app.post("/mongo/grant_role_user", tags=["MONGO"], description="use this to grant a role to a user. You can also use this to assign mongo build-in role to your user.")
+def grant_role_to_user(username: str, profile: MONGO, role_name: str, db: str, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails:
         raise HTTPException(status_code=403, detail="You are not allowed to grant a role to a different user.")
+    if role_name in db_roles:
+        raise HTTPException(status_code=403, detail="You are not allowed to grant this role.")
     try:
         mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/admin'
         # mongo_uri = f'mongodb://{os.getenv("MONGO_USERNAME")}:{os.getenv("MONGO_PASSWORD")}@{get_mongo_url(profile)}/admin'
         with MongoClient(mongo_uri) as client:
             database = client['admin']
-            database.command("grantRolesToUser", username, roles=[{'role': role_name, 'db': 'admin'}])
+            database.command("grantRolesToUser", username, roles=[{'role': role_name, 'db': db}])
             logging.info(f"added {role_name} to {username} on {profile.name}")
             return {"message": f"added {role_name} to User '{username}' in '{profile.name}'"}
     except Exception as e:
