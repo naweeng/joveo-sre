@@ -306,7 +306,7 @@ def delete_user_from_everywhere(username: str, github_username: Optional[str] = 
         for grafanaenv in GrafanaENV:
             delete_user_grafana(username, stack=grafanaenv.value)
             # print(grafanaenv, grafanaenv.value)
-            msg = f"User {username} Deleted successfully in applicable AWS stacks, Grafana and Github(if provided). AWS Login details have been sent over email."
+            msg = f"User {username} Deleted successfully in applicable AWS stacks, Grafana and Github(if provided). For more details Please check logs"
 
         return msg
     except Exception as e:  
