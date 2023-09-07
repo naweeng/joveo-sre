@@ -128,7 +128,7 @@ async def get_user(request: Request) -> Optional[dict]:
     if user is not None:
         return user
     else:
-        raise HTTPException(status_code=403, detail='Your session has expired. Please log in again.')
+        raise HTTPException(status_code=403, detail='You are not logged-in. Please log in to use these endpoints.')
     return None
 
 
