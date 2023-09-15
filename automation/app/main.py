@@ -160,7 +160,7 @@ async def create_user_everywhere(username: str, github_username: Optional[str] =
                 session = boto3.Session(profile_name=stack.value)
                 # print(stack, loggeduser)
                 onboard_user(username, stack, session)
-                return f"User {username} created successfully in AWS Prod stack. Login details have been sent over email."
+                # return f"User {username} created successfully in AWS Prod stack. Login details have been sent over email."
 
             msg = f"User {username} created successfully in applicable AWS stacks. Login details have been sent over email."
 
