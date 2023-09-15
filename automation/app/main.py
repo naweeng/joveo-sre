@@ -169,7 +169,7 @@ async def create_user_everywhere(username: str, github_username: Optional[str] =
                 msg = f"User {username} created successfully in applicable AWS stacks and Github. AWS Login details have been sent over email."
             
             for grafanaenv in GrafanaENV:
-                invite_grafana_user(username, grafanaenv)
+                invite_grafana_user(username, GrafanaStack=grafanaenv.value)
                 # print(grafanaenv, grafanaenv.value)
                 msg = f"User {username} created successfully in applicable AWS stacks, Grafana and Github(if provided). AWS Login details have been sent over email."
 
