@@ -25,7 +25,7 @@ logging.getLogger('botocore').setLevel(logging.WARNING)
 def get_admin_emails():
     USER_EMAIL = get_secret()["gmail_owner_email"]
 
-    # Set the necessary scopes
+    # Setting the necessary scopes
     scopes = ["https://www.googleapis.com/auth/admin.directory.group.member.readonly"]
     secret_info = json.loads(get_secret()["service_account"])
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(
@@ -34,10 +34,9 @@ def get_admin_emails():
     delegated_credentials = credentials.create_delegated(USER_EMAIL)
     directory_service = build("admin", "directory_v1", credentials=delegated_credentials)
 
-    # Specify the groupKey (group's email address)
-    group_key = "sre-team@joveo.com"
+    # group's email address
+    group_key = "sre-admin@joveo.com"
 
-    # List members of the group
     members = directory_service.members().list(groupKey=group_key).execute()
     # print(members)
     admin_emails = [member['email'] for member in members['members']]
