@@ -14,7 +14,6 @@ from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logging.getLogger('boto3').setLevel(logging.WARNING)
 logging.getLogger('botocore').setLevel(logging.WARNING) 
@@ -47,21 +46,17 @@ def get_admin_emails():
 
 
 def generate_random_password():
-    length = 16
-    characters = string.ascii_letters + string.digits + string.punctuation
-    while True:
-        password = ''.join(secrets.choice(characters) for _ in range(length))
-        if any(char.islower() for char in password) and \
-           any(char.isupper() for char in password) and \
-           any(char.isdigit() for char in password) and \
-           any(char in string.punctuation for char in password) and \
-           "'" not in password and '"' not in password and "`" not in password and "-" not in password:
-            return password
-        else:
-            continue
-# print(generate_random_password())
-
-
+    puncts='!@#$%^&*()_+=[]{|}'
+    secret_manager = boto3.client('secretsmanager', region_name='us-east-1')
+    response = secret_manager.get_random_password(
+                    IncludeSpace=False,
+                    PasswordLength=16,
+                    RequireEachIncludedType=True,
+                    ExcludePunctuation=True)
+    random_pass=response['RandomPassword']
+    #print(secrets.choice(puncts))
+    random_pass=random_pass+secrets.choice(puncts)
+    return random_pass
 
 
 
@@ -118,6 +113,23 @@ def onboard_user(username, profile, session):
         return True
     except iam.exceptions.EntityAlreadyExistsException:
         logging.error(f"User {username} already exists in {profile.name}.")
+        return False
+
+def onboard_user_to_group(username, groupname,profile, session):
+    iam = session.client('iam')
+    try:
+        # Check if the user already exists
+        try:
+            iam.get_user(UserName=username)
+        except iam.exceptions.NoSuchEntityException:
+            logging.info(f"User '{username}' not doesn't exists in {profile.name}")
+            return False
+
+        response = iam.add_user_to_group(GroupName=groupname,UserName=username)
+        logging.info(f"Added {username} to {groupname} group ")
+        return True
+    except iam.exceptions.EntityAlreadyExistsException:
+        logging.error(f"User {username} already exists in {groupname} group.")
         return False
 
 
@@ -337,4 +349,3 @@ def delete_user_grafana(username, stack):
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         raise Exception(f"An error occurred: {str(e)}")
-
