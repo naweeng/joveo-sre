@@ -99,7 +99,7 @@ class attributes(BaseModel):
     ORDER: int
 
 class Index(BaseModel):
-    attribute: list[attributes] | None = None
+    attribute: list[attributes]
 
 def get_aws_account_url(profile: Stack):
     aws_urls = {
