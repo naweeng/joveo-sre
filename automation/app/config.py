@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from enum import Enum
 from typing import List
 import os
@@ -56,9 +56,50 @@ class MONGO(Enum):
     # JC_DS_STAGE_MONGO = "jc-ds-stage-mongo"
     # JC_FNA_HEIMDALL_STAGE_MONGO = "jc-fna-heimdall-stage-mongo"
 
+class Restore_MONGO(Enum):
+    RULES_MONGO_PROD = "services-rulesengine"
+    APPLY_MONGO_PROD = "apply-mongo"
+    FNA_HEIMDALL_MONGO_PROD = "fna-heimdall"
+    FNA_PUBMAN_MONGO_PROD = "fna-pub-man"
+    FNA_NON_PPC_MONGO_PROD = "fna-non-ppc-mongo"
+    DS_MONGO_PROD = "ds-mojogo"
+    TRACKING_DMA_MONGO_PROD = "trk-dma-mongo"
+    TRACKING_CG_MONGO_PROD = "trk-dma-cg"
+    HASHING_MONGO_PROD = "hashing-mongo"
+
+version={
+         "services-rulesengine":4.0,
+         "apply-mongo":5.0,
+         "fna-heimdall":5.0,
+         "fna-pub-man":5.0,
+         "fna-non-ppc-mongo":5.0,
+         "ds-mojogo":4.2,
+         "trk-dma-mongo":5.0,
+         "trk-dma-cg":5.0,
+          "hashing-mongo":4.2           }
+
 class MONGO_ROLES(Enum):
     READONLY = "readAnyDatabase"
     CLUSTERMONITOR = "clusterMonitor"
+
+class INDEX_TYPE(Enum):
+    SIMPLE = "simple"
+    COMPOUND = "compound"
+
+class UNIQUE(Enum):
+    UNIQUE = "unique"
+    NONUNIQUE = "non-unique"
+
+class ORDER(Enum):
+    ASC = "ascending"
+    DESC = "descending"
+
+class attributes(BaseModel):
+    NAME: str
+    ORDER: int
+
+class Index(BaseModel):
+    attribute: list[attributes] | None = None
 
 def get_aws_account_url(profile: Stack):
     aws_urls = {
