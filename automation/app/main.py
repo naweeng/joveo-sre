@@ -10,8 +10,7 @@ from .config import *
 from .helper import *
 from typing import Optional
 from fastapi import FastAPI, Depends, Request, HTTPException, Form, Cookie
-from datetime import datetime
-
+from datetime import datetime,  timedelta
 from starlette.config import Config
 from starlette.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -194,6 +193,23 @@ async def getting_all_users(profile: Stack):
         logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500,detail=str(e))
 
+'''@app.get('/aws/get_groups', tags=["AWS"], description="You can use this to list all the groups in an AWS Account.")
+async def get_all_groups(profile: Stack):
+    try:
+        allgroups = []
+        session = boto3.Session(profile_name=profile.value)
+        client = session.client('iam')
+        groups = client.get_paginator('list_groups')
+        for response in groups.paginate():
+            for group in response['Groups']:
+                allgroups.append(group['GroupName'])
+        allgroups.remove('Administrators')    
+        print(allgroups)    
+        return allgroups
+    except Exception as e:  
+        logging.error(f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500,detail=str(e))'''
+
 
 @app.post('/aws/create_user', tags=["AWS"], description="use this to create a user or provide a list of users to be created in an AWS account")
 async def create_user(username: str, profile: Stack, request: dict = Depends(get_user)):
@@ -233,7 +249,25 @@ async def delete_user(username: str, profile: Stack, request: dict = Depends(get
         logging.error(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
+
+'''@app.get("/aws/add_user_group", tags=["AWS"])
+def add_to_aws_group(username: str,groupname: str,profile: Stack, request: dict = Depends(get_user)):
+    if username != request['email'] and request['email'] not in admin_emails:
+        logging.error(f"{request['email']} is not allowed to perform this operation for another email address")
+        raise HTTPException(status_code=403, detail="You are not allowed to add user with a different email.")
     
+    session = boto3.Session(profile_name=profile.value)
+    try:
+        # Continue with user creation
+        created = onboard_user_to_group(username, groupname,profile, session)
+        if created:
+            return f"{username} added  successfully to {groupname} for {profile.name}."
+        else:
+            return f"User {username} doesnt exists in {profile.name}"
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))'''
+
 @app.patch('/aws/reset_password', tags=["AWS"], description="use this to reset creds in AWS account")
 async def reset_user_creds(username: str, profile: Stack, request: dict = Depends(get_user)):
     if username != request['email'] and request['email'] not in admin_emails :
@@ -550,6 +584,97 @@ def reset_application_user_password(your_email: str,app_username: str, profile: 
         logging.error(f"An error occurred: {str(e)}")
         return {"error": str(e)}
     
+@app.post("/mongo/create_index", tags=["MONGO"])
+def create_index(profile: MONGO, db: str, collection: str,uniqueness:UNIQUE,attributes:Index):
+    try :
+        att_list=[]
+        index_name=''
+        for attribute in attributes.attribute:
+            att_list.append((attribute.NAME,attribute.ORDER))
+            index_name=index_name+attribute.NAME+str(attribute.ORDER)
+        #print((att_list))
+        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
+        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
+        client = MongoClient(mongo_uri)
+        database = client[db]
+        collection_object = database[collection]
+        #print(uniquenes.value)
+        if uniquenes.value=='unique':
+            print()
+            #Create a index
+            result=collection_object.create_index(att_list ,unique=True, background=True,name=index_name)
+        else:
+            print()
+            # Create a index
+            result=collection_object.create_index(att_list , background=True,name=index_name)
+        client.close()
+        logging.info(f"created index on collection {str(collection)}: {result}")
+        return {f"Index has been created on collection {str(collection)}: {result}"}
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        return {"error": str(e)}
+    
+@app.get("/mongo/show_indices", tags=["MONGO"])
+def show_indices(profile: MONGO, db: str, collection: str):
+    try:
+        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
+        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
+        print(mongo_uri)
+        client = MongoClient(mongo_uri)
+        database = client[db]
+        collection = database[collection]
+        index_info=(collection.index_information())
+        #index_info=json.dumps(index_info, indent = 4)
+
+        client.close()
+        logging.info(f"The indices are  {index_info}")
+        return JSONResponse(content=index_info)
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        return {"error": str(e)}
+
+@app.post("/mongo/restore", tags=["MONGO"])
+def restore_mongo(profile: Restore_MONGO, Snapshot_date:str,Delete_after_days : int):
+    try:
+        # Calculate the deletion date
+        delete_date = datetime.now() + timedelta(days=Delete_after_days)
+
+        Snapshot_filter_key = 'tag:Name'
+        Snapshot_filter_value= profile.value
+        print(str(Snapshot_filter_value))
+        Snapshot_date=datetime.strptime(Snapshot_date,'%Y-%m-%d')
+        snap=fetchSnapshotsByTags(Snapshot_filter_key, Snapshot_filter_value,Snapshot_date)
+        if snap is None:
+            return {f"No snapshot exist in this date for {str(profile.value)}. Please choose date within 10 days frame."}
+        snapshotId = snap['SnapshotId']
+        vol_Id = snap['VolumeId']
+        logging.info('the snapshot to be used and its associated volume %s %s' ,snapshotId,vol_Id)
+
+        fetchInstanceByVol(vol_Id,Snapshot_filter_value,delete_date)
+        #validate key
+        generate_key_file()
+        key_file = 'craiggenie-aws.pem'
+        verify_key_file(key_file)
+
+        #restoring proces
+        try:
+            volume_id, volume_size = createVolume(snapshotId)
+            instance_id, server_ip = createInstance()
+            attachVolume(instance_id, volume_id)
+            server_side(server_ip, volume_size, key_file,Snapshot_filter_value)
+            os.remove('craiggenie-aws.pem')
+            return {f"{str(profile.value)} has been restore. Restored Instance IP: {server_ip}"}
+ 
+        except Exception as e:
+            logging.error(f"An error occurred: {str(e)}")
+            return {"error": str(e)}
+
+        
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        return {"error": str(e)}
+    
+
 
 
 @app.post("/joveo/invite_github_user/{github_username}", tags=["Github"])
