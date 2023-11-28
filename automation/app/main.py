@@ -593,13 +593,13 @@ def create_index(profile: MONGO, db: str, collection: str,uniqueness:UNIQUE,attr
             att_list.append((attribute.NAME,attribute.ORDER))
             index_name=index_name+attribute.NAME+str(attribute.ORDER)
         #print((att_list))
-        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
-        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
+        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
+        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
         client = MongoClient(mongo_uri)
         database = client[db]
         collection_object = database[collection]
         #print(uniquenes.value)
-        if uniquenes.value=='unique':
+        if uniqueness.value=='unique':
             print()
             #Create a index
             result=collection_object.create_index(att_list ,unique=True, background=True,name=index_name)
@@ -617,8 +617,8 @@ def create_index(profile: MONGO, db: str, collection: str,uniqueness:UNIQUE,attr
 @app.get("/mongo/show_indices", tags=["MONGO"])
 def show_indices(profile: MONGO, db: str, collection: str):
     try:
-        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
-        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
+        mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{get_mongo_url(profile)}/'
+        #mongo_uri = f'mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@172.31.67.107:27017/'
         print(mongo_uri)
         client = MongoClient(mongo_uri)
         database = client[db]
